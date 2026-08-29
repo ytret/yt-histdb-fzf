@@ -11,7 +11,10 @@ if (( ${+functions[_histdb_query]} && ${+commands[sqlite3]} && ${+commands[fzf]}
 
   _yt_histdb_fzf() {
     emulate -L zsh
-    setopt extendedglob pipefail no_aliases no_glob no_sh_glob noglobsubst no_ksharrays 2>/dev/null
+    # NOTE: no `pipefail` here — _histdb_query returns 1 even on success
+    # (its `[[ $? -ne 0 ]] && echo` compound), which would poison the
+    # pipeline's exit status and make us drop a valid fzf selection.
+    setopt extendedglob no_aliases no_glob no_sh_glob noglobsubst no_ksharrays 2>/dev/null
 
     # One line per distinct command, most recently run first.
     # Newlines inside a command are rewritten to \x01 on read (and reversed
