@@ -9,8 +9,11 @@ instead of the current shell's in-memory history. Every tmux pane shares
 commands, most recent first, feeds them to fzf, and on accept inserts the
 selection **without running it** — Enter again runs it (histdb records the new
 execution). The fzf invocation mirrors fzf's own `fzf-history-widget`
-(`__fzf_defaults` + `__fzfcmd`, `FZF_DEFAULT_OPTS`, `FZF_DEFAULT_OPTS_FILE`),
-so `FZF_CTRL_R_OPTS` and `fzf-tmux` keep working.
+(`__fzfcmd`, `FZF_DEFAULT_OPTS`, `FZF_DEFAULT_OPTS_FILE`), so
+`FZF_CTRL_R_OPTS` and `fzf-tmux` keep working.  `__fzf_defaults` is inlined
+rather than called: fzf < 0.53 (e.g. Debian's 0.44.1) has no such function,
+and calling an undefined function would empty `FZF_DEFAULT_OPTS`, dropping
+yt-autotheme's `--color=...`.
 
 ## Load guard
 Single file. Loaded after `fzf` (whose `^R` it overrides) and `zsh-histdb`.
@@ -53,6 +56,12 @@ and autosuggestions then agree on what "history" means.
    clobbers the terminal; without these zsh never redraws the prompt/buffer
    (prompt disappears, typing from column 0, paste invisible). Mirrors fzf's
    own widget.
+3. **Don't call `__fzf_defaults`.** It only exists in fzf ≥ 0.53; on the
+   Debian 0.44.1 package it's undefined, so
+   `FZF_DEFAULT_OPTS="$(__fzf_defaults ...)"` expands to "" and every opt in
+   `${FZF_DEFAULT_OPTS-}` (e.g. yt-autotheme's `--color=...`) silently
+   vanishes. Inline the merge — `--height`, `cat "${FZF_DEFAULT_OPTS_FILE-}"`,
+   `${FZF_DEFAULT_OPTS-}`, then scheme/bind/query — directly in the widget.
 
 ## Conventions
 - `_yt-` prefix (matches `yt-key-bindings`); `emulate -L zsh` in the widget.
@@ -72,3 +81,7 @@ and autosuggestions then agree on what "history" means.
   `SELECT`; inserts belong to `zsh-histdb`.
 - **`${(qqq)LBUFFER}`** safely quotes arbitrary buffer content for fzf's
   `--query=` (quotes, spaces, `$`, backslashes). Keep it.
+- **Assert `FZF_DEFAULT_OPTS` passthrough in the stub.** Make the stubbed
+  `fzf` record its `$FZF_DEFAULT_OPTS` (and `$FZF_DEFAULT_OPTS_FILE`) to a
+  file, then assert the expected flag (e.g. `--color=light`) is present. This
+  is how the `__fzf_defaults`-dropped-colors regression was caught.

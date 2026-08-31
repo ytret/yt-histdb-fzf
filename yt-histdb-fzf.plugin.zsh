@@ -30,9 +30,18 @@ if (( ${+functions[_histdb_query]} && ${+commands[sqlite3]} && ${+commands[fzf]}
     '
 
     local selected ret
+    # Inline fzf's own __fzf_defaults instead of calling it: fzf < 0.53
+    # (e.g. Debian's 0.44.1) doesn't define __fzf_defaults, so the call would
+    # expand to "" and silently drop ${FZF_DEFAULT_OPTS-} — i.e. the
+    # --color=... that yt-autotheme sets.  This keeps FZF_DEFAULT_OPTS and
+    # FZF_DEFAULT_OPTS_FILE flowing through on every fzf version.
     selected="$(
       _histdb_query "$query" |
-      FZF_DEFAULT_OPTS="$(__fzf_defaults "" "--scheme=history --bind=ctrl-r:toggle-sort ${FZF_CTRL_R_OPTS-} --query=${(qqq)LBUFFER}")" \
+      FZF_DEFAULT_OPTS="$(
+        builtin printf '%s\n' "--height ${FZF_TMUX_HEIGHT:-40%} --bind=ctrl-z:ignore"
+        command cat "${FZF_DEFAULT_OPTS_FILE-}" 2>/dev/null
+        builtin printf '%s\n' "${FZF_DEFAULT_OPTS-} --scheme=history --bind=ctrl-r:toggle-sort ${FZF_CTRL_R_OPTS-} --query=${(qqq)LBUFFER}"
+      )" \
       FZF_DEFAULT_OPTS_FILE='' \
       $(__fzfcmd)
     )"
